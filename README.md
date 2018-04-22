@@ -1,4 +1,4 @@
-# Parrot 
+# Parrot [![Build Status](https://travis-ci.org/peonone/parrot.svg?branch=master)](https://travis-ci.org/peonone/parrot)
 
 parrot is a microservice based chat server for practice purpose, it's powered by [github.com/micro/go-micro](https://github.com/micro/go-micro).
 
