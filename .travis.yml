@@ -11,5 +11,3 @@ install:
 script:
   - make test
   - goverage -coverprofile=coverage.txt ./...
-  - >-
-    golint ./... | reviewdog -f=golint -ci=travis
