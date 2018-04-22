@@ -1,0 +1,62 @@
+syntax = "proto3";
+package proto;
+
+service Private{
+    rpc Send(SendPMReq) returns (SendPMRes);
+}
+
+service State {
+    rpc Online(UserOnlineReq) returns (UserOnlineRes);
+    rpc Offline(UserOfflineReq) returns (UserOfflineRes);
+}
+
+message SendPMReq {
+    string fromUID = 1;
+    string toUID = 2;
+    string content = 3;
+}
+
+message SendPMRes {
+    bool success = 1;
+    string errMsg = 2;
+}
+
+message PushMsg {
+    string command = 1;
+    bytes body = 2;
+}
+
+message SentPrivateMsg {
+    SendPMReq req = 1;
+    int64 sentTimestamp = 2;
+}
+
+message UserOnlineReq {
+    string uid = 1;
+    string webNode = 2;
+}
+
+message UserOnlineRes {
+    bool success = 1;
+    string errMsg = 2;
+}
+
+message UserOfflineReq{
+    string uid = 1;
+}
+
+message UserOfflineRes{
+    bool success = 1;
+    string errMsg = 2;
+}
+
+// message DeliverPMReq {
+//     string fromUID = 1;
+//     int32 sentTimestamp = 2;
+//     string content = 3;
+// }
+
+// message DeliverPMRes {
+//     bool success = 1;
+//     string errMsg = 2;
+// }

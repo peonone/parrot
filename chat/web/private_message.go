@@ -1,0 +1,93 @@
+package web
+
+import (
+	"context"
+	"errors"
+	"log"
+
+	"github.com/micro/go-micro/client"
+	"github.com/peonone/parrot/chat"
+	"github.com/peonone/parrot/chat/proto"
+	"github.com/peonone/parrot/chat/srv"
+)
+
+const sendPMCmd = "private.send"
+
+type privateMessageHandler struct {
+	*baseCmdHandler
+	cli proto.PrivateService
+}
+
+func newPrivateMessageHandler(rpcCli client.Client, bch *baseCmdHandler) commandHandler {
+	return &privateMessageHandler{
+		baseCmdHandler: bch,
+		cli:            proto.PrivateServiceClient(srv.Name, rpcCli),
+	}
+}
+
+func (h *privateMessageHandler) canHandle(cmd string) bool {
+	return cmd == sendPMCmd
+}
+
+func (h *privateMessageHandler) validate(req map[string]interface{}) error {
+	toUID, ok := req["toUID"]
+	if !ok {
+		return errors.New("mush specify a toUID(str)")
+	}
+	_, ok = toUID.(string)
+	if !ok {
+		return errors.New("mush specify a toUID(str)")
+	}
+
+	content, ok := req["content"]
+	if !ok {
+		return errors.New("mush specify a content(str)")
+	}
+	_, ok = content.(string)
+	if !ok {
+		return errors.New("mush specify a content(str)")
+	}
+	return nil
+}
+
+func (h *privateMessageHandler) handle(c *onlineUser, req map[string]interface{}) {
+	rpcReq := &proto.SendPMReq{
+		FromUID: c.uid,
+		ToUID:   req["toUID"].(string),
+		Content: req["content"].(string),
+	}
+	rpcRes, err := h.cli.Send(context.Background(), rpcReq)
+	if err != nil {
+		c.pushCh <- &genericResp{
+			Success: false,
+			ErrMsg:  err.Error(),
+		}
+	} else {
+		c.pushCh <- &rpcRes
+	}
+}
+
+func (h *privateMessageHandler) canHandlePush(cmd string) bool {
+	return cmd == chat.PushPrivateCmd
+}
+
+func (h *privateMessageHandler) handlePush(pushMsg *proto.PushMsg) {
+	pushPrivMsg := &proto.SentPrivateMsg{}
+	err := chat.DecodeFromPushMsg(pushMsg, pushPrivMsg)
+	if err != nil {
+		log.Printf("failed to decode SentPrivateMsg: %s", err)
+		return
+	}
+	resp := make(map[string]interface{})
+	resp["command"] = chat.PushPrivateCmd
+	resp["fromUID"] = pushPrivMsg.Req.FromUID
+	resp["sentTimestamp"] = pushPrivMsg.SentTimestamp
+	resp["content"] = pushPrivMsg.Req.Content
+
+	c := h.oum.getOnlineClient(pushPrivMsg.Req.ToUID)
+	if c == nil {
+		log.Printf("user[%s] is not online", pushPrivMsg.Req.ToUID)
+	} else {
+		c.pushCh <- resp
+	}
+}

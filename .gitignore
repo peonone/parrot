@@ -1,0 +1,6 @@
+*.log
+*.rdb
+*.swp
+/app
+/vendor
+/Gopkg.lock

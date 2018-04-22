@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Websocket Stream</title>
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script src="./chat/main.js"></script>
+    <style>
+      table {
+        table-layout: fixed;
+      }
+      td {
+        border: 2px solid green;
+      }
+      td input {
+        width: 100%;
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="login">
+      <form id="loginForm">
+        <input name="username" placeholder="User Name">
+        <input type="password" name="password" placeholder="Password">
+        <button onclick="javascript:login(); return false;">Login</button>
+      </form>
+    </div>
+    <div id="chat" style="display:none;">
+    <table>
+      <tr>
+        <td valign="top" width="25%">
+          <p>
+            <form id="private">
+              <input name="command" type="hidden" value="private.send" />
+              <p>
+                To: <br>
+                <input id="toUID" name="toUID" placeholder="the user's UID"/>
+              </p>
+              <p>
+                Content:<br>
+                <textarea id="content" name="content" placeholder="blabla..."></textarea>
+              </p>
+              <p>
+                <button type="button" id="send" onClick="javascript:sendPM();return false;">Send</button>
+              </p>
+              
+            </form>
+          </p>
+        </td>
+        <td valign="top" width="75%">
+          <ul id="output"/>
+        </td>
+      </tr>
+    </table>
+    </div>
+    <ul id="info">
+      
+    </ul>
+  </body>
+</html>

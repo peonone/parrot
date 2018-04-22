@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package proto;
+
+service Auth {
+    rpc Login(LoginReq) returns (LoginRes);
+    rpc Check(CheckAuthReq) returns (CheckAuthRes);
+}
+
+message LoginReq {
+    string username = 1;
+    string password = 2;
+} 
+
+message LoginRes {
+    bool success = 1;
+    string errMsg = 2;
+    string uid = 3;
+    string token = 4;
+}
+
+message CheckAuthReq {
+    string uid = 1;
+    string token = 2;
+}
+
+message CheckAuthRes {
+    bool success = 1;
+    string errMsg = 2;
+}
