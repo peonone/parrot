@@ -18,6 +18,13 @@ type privateMessageHandler struct {
 	cli proto.PrivateService
 }
 
+type privateMessagePush struct {
+	Command       string `json:"command"`
+	FromUID       string `json:"fromUID"`
+	Content       string `json:"content"`
+	SentTimestamp int64  `json:"sentTimestamp"`
+}
+
 func newPrivateMessageHandler(rpcCli client.Client, bch *baseCmdHandler) commandHandler {
 	return &privateMessageHandler{
 		baseCmdHandler: bch,
@@ -63,7 +70,7 @@ func (h *privateMessageHandler) handle(c *onlineUser, req map[string]interface{}
 			ErrMsg:  err.Error(),
 		}
 	} else {
-		c.pushCh <- &rpcRes
+		c.pushCh <- rpcRes
 	}
 }
 
@@ -78,11 +85,12 @@ func (h *privateMessageHandler) handlePush(pushMsg *proto.PushMsg) {
 		log.Printf("failed to decode SentPrivateMsg: %s", err)
 		return
 	}
-	resp := make(map[string]interface{})
-	resp["command"] = chat.PushPrivateCmd
-	resp["fromUID"] = pushPrivMsg.Req.FromUID
-	resp["sentTimestamp"] = pushPrivMsg.SentTimestamp
-	resp["content"] = pushPrivMsg.Req.Content
+	resp := &privateMessagePush{
+		Command:       chat.PushPrivateCmd,
+		FromUID:       pushPrivMsg.Req.FromUID,
+		Content:       pushPrivMsg.Req.Content,
+		SentTimestamp: pushPrivMsg.SentTimestamp,
+	}
 
 	c := h.oum.getOnlineClient(pushPrivMsg.Req.ToUID)
 	if c == nil {
