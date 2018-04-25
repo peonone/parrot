@@ -35,11 +35,11 @@ func listenPushMsgs(amqpClient *amqp.Channel, cmdHandlers []commandHandler) erro
 	if err != nil {
 		return err
 	}
-	go handle(deliveries, cmdHandlers)
+	go handlePushMsg(deliveries, cmdHandlers)
 	return nil
 }
 
-func handle(deliveries <-chan amqp.Delivery, handlers []commandHandler) {
+func handlePushMsg(deliveries <-chan amqp.Delivery, handlers []commandHandler) {
 	for d := range deliveries {
 		pushMsg := &proto.PushMsg{}
 		err := protobuf.Unmarshal(d.Body, pushMsg)
