@@ -9,7 +9,7 @@ const OnlineStateKey = "online-user-nodes"
 const PushMsgExchangeName = "push-msg"
 const PushPrivateCmd = "private.push"
 
-func EncodePushMsg(cmd string, msg protobuf.Message) ([]byte, error) {
+func BuildPushMsg(cmd string, msg protobuf.Message) (*proto.PushMsg, error) {
 	msgBody, err := protobuf.Marshal(msg)
 	if err != nil {
 		return nil, err
@@ -18,7 +18,15 @@ func EncodePushMsg(cmd string, msg protobuf.Message) ([]byte, error) {
 		Command: cmd,
 		Body:    msgBody,
 	}
-	return protobuf.Marshal(pushMsg)
+	return pushMsg, nil
+}
+
+func EncodePushMsg(cmd string, msg protobuf.Message) ([]byte, error) {
+	msg, err := BuildPushMsg(cmd, msg)
+	if err != nil {
+		return nil, err
+	}
+	return protobuf.Marshal(msg)
 }
 
 func DecodeFromPushMsg(pushMsg *proto.PushMsg, msg protobuf.Message) error {
