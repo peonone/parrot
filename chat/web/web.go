@@ -15,6 +15,7 @@ import (
 	"github.com/peonone/parrot/chat/srv"
 )
 
+// Name is the chat web service name
 const Name = "go.micro.web.chat"
 
 var upgrader = websocket.Upgrader{
@@ -50,8 +51,14 @@ type genericResp struct {
 	ErrMsg  string `json:"errMsg"`
 }
 
+var invalidCmdResp = &genericResp{
+	Success: false,
+	ErrMsg:  "invalid command",
+}
+
 var ouManager *onlineUsersManager
 
+// Init initializes required resources and register handlers
 func Init(service web.Service) func() {
 	ouManager := newOnlineUsersManager()
 	rpcClient := client.NewClient(client.RequestTimeout(time.Second * 120))
@@ -134,53 +141,46 @@ func (c *onlineUser) serve(
 	ouManager.online(c)
 
 	for {
-		// the WS client may send various kinds of request
-		req := make(map[string]interface{})
-		err = c.userClient.ReadJSON(&req)
+		err = processWsRequest(c, cmdHandlers)
 		if err == io.EOF {
 			return nil
 		} else if err != nil {
 			return err
 		}
-		cmd := req["command"]
-		cmdStr, ok := cmd.(string)
-		if cmd == nil || !ok {
-			c.pushCh <- &genericResp{
-				Success: false,
-				ErrMsg:  "Must specify a command",
-			}
-			continue
-		}
-
-		handled := false
-		for _, h := range cmdHandlers {
-			if h.canHandle(cmdStr) {
-				if err = h.validate(req); err != nil {
-					c.pushCh <- genericResp{
-						Success: false,
-						ErrMsg:  err.Error(),
-					}
-				} else {
-					h.handle(c, req)
-				}
-				handled = true
-				break
-			}
-		}
-		if !handled {
-			c.pushCh <- genericResp{
-				Success: false,
-				ErrMsg:  "invalid command",
-			}
-		}
 	}
 }
 
-func isExpectedClose(err error) bool {
-	if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-		log.Println("Unexpected websocket close: ", err)
-		return false
+func processWsRequest(c *onlineUser, cmdHandlers []commandHandler) error {
+	// the WS client may send various kinds of request
+	req := make(map[string]interface{})
+	err := c.userClient.ReadJSON(&req)
+	if err != nil {
+		return err
+	}
+	cmd := req["command"]
+	cmdStr, ok := cmd.(string)
+	if cmd == nil || !ok {
+		c.pushCh <- invalidCmdResp
+		return nil
 	}
 
-	return true
+	handled := false
+	for _, h := range cmdHandlers {
+		if h.canHandle(cmdStr) {
+			if err = h.validate(req); err != nil {
+				c.pushCh <- &genericResp{
+					Success: false,
+					ErrMsg:  err.Error(),
+				}
+			} else {
+				h.handle(c, req)
+			}
+			handled = true
+			break
+		}
+	}
+	if !handled {
+		c.pushCh <- invalidCmdResp
+	}
+	return nil
 }
