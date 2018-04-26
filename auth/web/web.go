@@ -10,9 +10,10 @@ import (
 	"github.com/peonone/parrot/auth/proto"
 )
 
+// Name is the service name of auth web
 const Name = "go.micro.web.auth"
 
-type Auth struct {
+type authHandler struct {
 	Client proto.AuthService
 }
 
@@ -20,16 +21,17 @@ type loginResp struct {
 	Success bool   `json:"success"`
 	ErrMsg  string `json:"errMsg"`
 	Token   string `json:"token"`
-	Uid     string `json:"uid"`
+	UID     string `json:"uid"`
 }
 
+// Init initializes auth web resources and registers all handlers
 func Init(service web.Service) {
-	auth := &Auth{Client: proto.AuthServiceClient("go.micro.srv.auth", client.DefaultClient)}
+	auth := &authHandler{Client: proto.AuthServiceClient("go.micro.srv.auth", client.DefaultClient)}
 
 	service.HandleFunc("/login", auth.loginHandler)
 }
 
-func (s *Auth) doLogin(req *http.Request) *loginResp {
+func (s *authHandler) doLogin(req *http.Request) *loginResp {
 	req.ParseForm()
 	name, ok := req.PostForm["username"]
 	if !ok || len(name) == 0 {
@@ -61,11 +63,11 @@ func (s *Auth) doLogin(req *http.Request) *loginResp {
 		Success: response.Success,
 		ErrMsg:  response.ErrMsg,
 		Token:   response.Token,
-		Uid:     response.Uid,
+		UID:     response.Uid,
 	}
 }
 
-func (s *Auth) loginHandler(w http.ResponseWriter, req *http.Request) {
+func (s *authHandler) loginHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	res := s.doLogin(req)
 	b, _ := json.Marshal(res)

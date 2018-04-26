@@ -13,7 +13,7 @@ import (
 
 const Name = "go.micro.srv.auth"
 
-type AuthService struct {
+type authService struct {
 	tokenStore
 }
 
@@ -26,12 +26,12 @@ func init() {
 //Init initialize the auth service
 func Init(service micro.Service) {
 	rdsClient := parrot.MakeRedisClient()
-	proto.RegisterAuthHandler(service.Server(), &AuthService{
+	proto.RegisterAuthHandler(service.Server(), &authService{
 		&redisTokenStore{rdsClient},
 	})
 }
 
-func (a *AuthService) generateToken() string {
+func (a *authService) generateToken() string {
 	b := make([]rune, 32)
 	for i := range b {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
@@ -40,7 +40,7 @@ func (a *AuthService) generateToken() string {
 }
 
 //Login is the login service handler
-func (a *AuthService) Login(ctx context.Context, req *proto.LoginReq, res *proto.LoginRes) error {
+func (a *authService) Login(ctx context.Context, req *proto.LoginReq, res *proto.LoginRes) error {
 	// TODO implement a real auth feature
 	if req.Password != req.Username+"!" {
 		res.Success = false
@@ -54,7 +54,7 @@ func (a *AuthService) Login(ctx context.Context, req *proto.LoginReq, res *proto
 }
 
 //Check is the auth check service handler
-func (a *AuthService) Check(ctx context.Context, req *proto.CheckAuthReq, res *proto.CheckAuthRes) error {
+func (a *authService) Check(ctx context.Context, req *proto.CheckAuthReq, res *proto.CheckAuthRes) error {
 	token, err := a.getToken(req.Uid)
 	if err != nil {
 		res.Success = false

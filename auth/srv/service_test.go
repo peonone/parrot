@@ -37,7 +37,7 @@ func (ts *mockTokenStore) getToken(uid string) (string, error) {
 func TestDoAndValidateAuth(t *testing.T) {
 	validTokens := make([]string, 0, 2)
 	mockTs := &mockTokenStore{}
-	a := AuthService{mockTs}
+	a := authService{mockTs}
 	for _, testData := range testDatas {
 		req := &proto.LoginReq{
 			Username: testData.username,

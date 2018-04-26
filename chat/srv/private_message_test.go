@@ -18,14 +18,14 @@ type testDataInfo struct {
 	content string
 }
 
-func TestX(t *testing.T) {
+func TestPrivateMessage(t *testing.T) {
 	ssMock := new(mockStateStore)
 	mqMock := new(mockMQSender)
-	basicHandler := &BasicHandler{
+	baseHandler := &baseHandler{
 		stateStore: ssMock,
 		mqSender:   mqMock,
 	}
-	ph := &PrivateHandler{basicHandler}
+	ph := &privateHandler{baseHandler}
 	testDatas := []testDataInfo{
 		{
 			fromUID: "3x",

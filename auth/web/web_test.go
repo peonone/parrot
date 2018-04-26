@@ -48,7 +48,7 @@ type testDataInfo struct {
 
 func TestDoLogin(t *testing.T) {
 	mockCli := new(mockSrvClient)
-	webService := &Auth{mockCli}
+	webService := &authHandler{mockCli}
 
 	testInfos := []testDataInfo{
 		{

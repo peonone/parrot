@@ -11,11 +11,13 @@ import (
 	"github.com/peonone/parrot/chat/proto"
 )
 
-type PrivateHandler struct {
-	*BasicHandler
+//PrivateHandler is the private message service handler
+type privateHandler struct {
+	*baseHandler
 }
 
-func (h *PrivateHandler) Send(ctx context.Context, req *proto.SendPMReq, res *proto.SendPMRes) error {
+//Send handles the private message send service call
+func (h *privateHandler) Send(ctx context.Context, req *proto.SendPMReq, res *proto.SendPMRes) error {
 	onlineNode, err := h.stateStore.getOnlineWebNode(req.ToUID)
 	defer func() {
 		if err != nil {

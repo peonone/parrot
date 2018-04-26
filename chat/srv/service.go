@@ -8,6 +8,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// Name is the chat service name
 const Name = "go.micro.srv.chat"
 
 type mqSender interface {
@@ -30,11 +31,12 @@ func (s *amqpMqSender) sendMQMsg(key string, body []byte) error {
 	return s.Publish(chat.PushMsgExchangeName, key, false, false, msg)
 }
 
-type BasicHandler struct {
+type baseHandler struct {
 	stateStore stateStore
 	mqSender   mqSender
 }
 
+// Init initialize chat service resources and register all handlers
 func Init(service micro.Service) {
 	rdsClient := parrot.MakeRedisClient()
 	amqpClient, err := parrot.MakeAMQPClient()
@@ -46,10 +48,10 @@ func Init(service micro.Service) {
 	if err != nil {
 		panic(err)
 	}
-	basicHandler := &BasicHandler{
+	baseHandler := &baseHandler{
 		stateStore: &redisStateStore{rdsClient},
 		mqSender:   &amqpMqSender{amqpClient},
 	}
-	proto.RegisterPrivateHandler(service.Server(), &PrivateHandler{basicHandler})
-	proto.RegisterStateHandler(service.Server(), &stateHandler{basicHandler})
+	proto.RegisterPrivateHandler(service.Server(), &privateHandler{baseHandler})
+	proto.RegisterStateHandler(service.Server(), &stateHandler{baseHandler})
 }

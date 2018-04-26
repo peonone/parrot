@@ -7,7 +7,7 @@ import (
 )
 
 type stateHandler struct {
-	*BasicHandler
+	*baseHandler
 }
 
 func (h *stateHandler) Online(ctx context.Context, req *proto.UserOnlineReq, res *proto.UserOnlineRes) error {
