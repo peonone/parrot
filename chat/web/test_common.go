@@ -29,6 +29,10 @@ func (c *mockUserClient) WriteJSON(v interface{}) error {
 	return returnVals.Error(0)
 }
 
+func (c *mockUserClient) Close() error {
+	return c.Called().Error(0)
+}
+
 type mockCmdHandler struct {
 	mock.Mock
 }

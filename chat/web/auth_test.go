@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/micro/go-micro/client"
 	authproto "github.com/peonone/parrot/auth/proto"
@@ -37,8 +38,9 @@ func TestAuth(t *testing.T) {
 	mockService := new(mockAuthService)
 	handler := &authHandler{mockService}
 	ou := &onlineUser{
-		userClient: mockClient,
-		pushCh:     make(chan interface{}, 10),
+		userClient:      mockClient,
+		pushCh:          make(chan interface{}, 10),
+		lastRequestTime: time.Now(),
 	}
 	req := &authproto.CheckAuthReq{
 		Uid:   "user1",

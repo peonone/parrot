@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -17,6 +18,11 @@ import (
 
 // Name is the chat web service name
 const Name = "go.micro.web.chat"
+
+const (
+	maxIdle           = time.Second * 5
+	idleCheckInterval = time.Second * 1
+)
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
@@ -38,12 +44,15 @@ type commandHandler interface {
 type userClient interface {
 	ReadJSON(v interface{}) error
 	WriteJSON(v interface{}) error
+	Close() error
 }
 
 type onlineUser struct {
-	userClient userClient
-	uid        string
-	pushCh     chan interface{}
+	mu              sync.Mutex
+	userClient      userClient
+	uid             string
+	pushCh          chan interface{}
+	lastRequestTime time.Time
 }
 
 type genericResp struct {
@@ -51,10 +60,16 @@ type genericResp struct {
 	ErrMsg  string `json:"errMsg"`
 }
 
-var invalidCmdResp = &genericResp{
-	Success: false,
-	ErrMsg:  "invalid command",
-}
+var (
+	invalidCmdResp = &genericResp{
+		Success: false,
+		ErrMsg:  "invalid command",
+	}
+	idleToLongResp = &genericResp{
+		Success: false,
+		ErrMsg:  "idle too long",
+	}
+)
 
 var ouManager *onlineUsersManager
 
@@ -91,8 +106,9 @@ func Init(service web.Service) func() {
 		}
 		defer conn.Close()
 		onlineUser := onlineUser{
-			userClient: conn,
-			pushCh:     make(chan interface{}),
+			userClient:      conn,
+			pushCh:          make(chan interface{}),
+			lastRequestTime: time.Now(),
 		}
 		err = onlineUser.serve(authHandler, cmdHandlers, stateClient, ouManager)
 		if err != nil {
@@ -112,6 +128,19 @@ func (c *onlineUser) sendToClient() {
 	}
 }
 
+func (c *onlineUser) checkIdle() {
+	for {
+		c.mu.Lock()
+		lastReqTime := c.lastRequestTime
+		c.mu.Unlock()
+		if time.Since(lastReqTime) >= maxIdle {
+			c.userClient.WriteJSON(idleToLongResp)
+			c.userClient.Close()
+			break
+		}
+		time.Sleep(idleCheckInterval)
+	}
+}
 func (c *onlineUser) serve(
 	authHandler *authHandler, cmdHandlers []commandHandler,
 	stateService proto.StateService, ouManager *onlineUsersManager) error {
@@ -123,6 +152,7 @@ func (c *onlineUser) serve(
 	}()
 	defer ouManager.offline(c)
 	go c.sendToClient()
+	go c.checkIdle()
 	err := authHandler.doAuth(c)
 
 	if err == io.EOF {
@@ -157,6 +187,9 @@ func processWsRequest(c *onlineUser, cmdHandlers []commandHandler) error {
 	if err != nil {
 		return err
 	}
+	c.mu.Lock()
+	c.lastRequestTime = time.Now()
+	c.mu.Unlock()
 	cmd := req["command"]
 	cmdStr, ok := cmd.(string)
 	if cmd == nil || !ok {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -17,8 +18,9 @@ func TestWsCmdProcess(t *testing.T) {
 
 	mockClient := new(mockUserClient)
 	ou := &onlineUser{
-		userClient: mockClient,
-		pushCh:     make(chan interface{}, 10),
+		userClient:      mockClient,
+		pushCh:          make(chan interface{}, 10),
+		lastRequestTime: time.Now(),
 	}
 
 	cmd := "cmd2"
@@ -67,4 +69,22 @@ func TestWsCmdProcess(t *testing.T) {
 	res, ok = (<-ou.pushCh).(*genericResp)
 	assert.Equal(t, ok, true)
 	assert.Equal(t, res, invalidCmdResp)
+}
+
+func TestCheckIdle(t *testing.T) {
+	mockClient := new(mockUserClient)
+	ou := &onlineUser{
+		userClient:      mockClient,
+		pushCh:          make(chan interface{}, 10),
+		lastRequestTime: time.Now(),
+	}
+
+	go ou.checkIdle()
+	time.Sleep(maxIdle - time.Second*2)
+	mockClient.AssertExpectations(t)
+
+	mockClient.On("Close").Return(nil).Once()
+	mockClient.On("WriteJSON", idleToLongResp).Return(nil).Once()
+	time.Sleep(time.Second*2 + idleCheckInterval*2)
+	mockClient.AssertExpectations(t)
 }

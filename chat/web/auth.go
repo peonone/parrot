@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"time"
 
 	"github.com/micro/go-micro/client"
 	authproto "github.com/peonone/parrot/auth/proto"
@@ -22,6 +23,9 @@ func (h *authHandler) doAuth(c *onlineUser) error {
 	req := new(authproto.CheckAuthReq)
 	for {
 		err := c.userClient.ReadJSON(req)
+		c.mu.Lock()
+		c.lastRequestTime = time.Now()
+		c.mu.Unlock()
 		if err != nil {
 			return err
 		}

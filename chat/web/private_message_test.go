@@ -35,9 +35,10 @@ func TestPrivateMsgHandler(t *testing.T) {
 
 	mockClient := new(mockUserClient)
 	ou := &onlineUser{
-		uid:        "peon1",
-		userClient: mockClient,
-		pushCh:     make(chan interface{}, 10),
+		uid:             "peon1",
+		userClient:      mockClient,
+		pushCh:          make(chan interface{}, 10),
+		lastRequestTime: time.Now(),
 	}
 
 	req := map[string]interface{}{
