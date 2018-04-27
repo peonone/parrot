@@ -21,7 +21,7 @@ const Name = "go.micro.web.chat"
 
 const (
 	maxIdle           = time.Second * 5
-	idleCheckInterval = time.Second * 1
+	idleCheckInterval = time.Second / 2
 )
 
 var upgrader = websocket.Upgrader{
@@ -52,6 +52,7 @@ type onlineUser struct {
 	userClient      userClient
 	uid             string
 	pushCh          chan interface{}
+	closed          bool
 	lastRequestTime time.Time
 }
 
@@ -129,7 +130,7 @@ func (c *onlineUser) sendToClient() {
 }
 
 func (c *onlineUser) checkIdle() {
-	for {
+	for !c.closed {
 		c.mu.Lock()
 		lastReqTime := c.lastRequestTime
 		c.mu.Unlock()
@@ -141,6 +142,7 @@ func (c *onlineUser) checkIdle() {
 		time.Sleep(idleCheckInterval)
 	}
 }
+
 func (c *onlineUser) serve(
 	authHandler *authHandler, cmdHandlers []commandHandler,
 	stateService proto.StateService, ouManager *onlineUsersManager) error {
@@ -183,7 +185,7 @@ func (c *onlineUser) serve(
 func processWsRequest(c *onlineUser, cmdHandlers []commandHandler) error {
 	// the WS client may send various kinds of request
 	req := make(map[string]interface{})
-	err := c.userClient.ReadJSON(&req)
+	err := c.userClient.ReadJSON(req)
 	if err != nil {
 		return err
 	}

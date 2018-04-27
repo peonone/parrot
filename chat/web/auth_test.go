@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/micro/go-micro/client"
+	"github.com/peonone/parrot"
 	authproto "github.com/peonone/parrot/auth/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -16,20 +17,14 @@ type mockAuthService struct {
 }
 
 func (s *mockAuthService) Login(ctx context.Context, req *authproto.LoginReq, opts ...client.CallOption) (*authproto.LoginRes, error) {
-	args := []interface{}{ctx, req}
-	for _, opt := range opts {
-		args = append(args, opt)
-	}
-	returnValues := s.Called(args...)
+	params := parrot.MakeMockServiceParams(ctx, req, opts...)
+	returnValues := s.Called(params...)
 	return returnValues.Get(0).(*authproto.LoginRes), returnValues.Error(1)
 }
 
 func (s *mockAuthService) Check(ctx context.Context, req *authproto.CheckAuthReq, opts ...client.CallOption) (*authproto.CheckAuthRes, error) {
-	args := []interface{}{ctx, req}
-	for _, opt := range opts {
-		args = append(args, opt)
-	}
-	returnValues := s.Called(args...)
+	params := parrot.MakeMockServiceParams(ctx, req, opts...)
+	returnValues := s.Called(params...)
 	return returnValues.Get(0).(*authproto.CheckAuthRes), returnValues.Error(1)
 }
 

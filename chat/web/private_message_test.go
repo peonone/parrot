@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/peonone/parrot"
+
 	"github.com/micro/go-micro/client"
 	"github.com/peonone/parrot/chat"
 	"github.com/peonone/parrot/chat/proto"
@@ -18,11 +20,7 @@ type mockPrivateMessageService struct {
 }
 
 func (s *mockPrivateMessageService) Send(ctx context.Context, in *proto.SendPMReq, opts ...client.CallOption) (*proto.SendPMRes, error) {
-	params := make([]interface{}, 0, 2+len(opts))
-	params = append(params, ctx, in)
-	for _, opt := range opts {
-		params = append(params, opt)
-	}
+	params := parrot.MakeMockServiceParams(ctx, in, opts...)
 	returnValues := s.Called(params...)
 	return returnValues.Get(0).(*proto.SendPMRes), returnValues.Error(1)
 }

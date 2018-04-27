@@ -28,6 +28,9 @@ func (m *onlineUsersManager) offline(c *onlineUser) {
 		m.mu.Unlock()
 	}
 	close(c.pushCh)
+	c.mu.Lock()
+	c.closed = true
+	c.mu.Unlock()
 }
 
 func (m *onlineUsersManager) clear() {

@@ -3,12 +3,60 @@ package web
 import (
 	"errors"
 	"fmt"
+	"io"
 	"testing"
 	"time"
 
+	"github.com/micro/go-web"
+	authproto "github.com/peonone/parrot/auth/proto"
+	"github.com/peonone/parrot/chat/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+func TestServe(t *testing.T) {
+	mockClient := new(mockUserClient)
+	ou := &onlineUser{
+		userClient:      mockClient,
+		pushCh:          make(chan interface{}, 10),
+		lastRequestTime: time.Now(),
+	}
+	mockAuthService := new(mockAuthService)
+	mockStateService := new(mockStateService)
+	authHandler := &authHandler{mockAuthService}
+	oum := newOnlineUsersManager()
+
+	authReq := &authproto.CheckAuthReq{
+		Uid:   "peon1",
+		Token: "token1",
+	}
+	mockClient.On("ReadJSON", mock.Anything).Return(authReq, nil).Once()
+	mockClient.On("WriteJSON", mock.Anything).Return(nil).Once()
+	authRes := &authproto.CheckAuthRes{Success: true}
+	mockAuthService.On("Check", mock.Anything, mock.Anything).Return(authRes, nil).Once()
+	onlineReq := &proto.UserOnlineReq{
+		Uid:     authReq.Uid,
+		WebNode: web.DefaultId,
+	}
+	onlineRes := &proto.UserOnlineRes{Success: true}
+	mockStateService.On("Online", mock.Anything, onlineReq).Return(onlineRes, nil).Once()
+	readJSONReq := map[string]interface{}{}
+	mockClient.On("ReadJSON", readJSONReq).WaitUntil(time.After(time.Second*2)).Return(readJSONReq, io.EOF).Once()
+
+	go ou.serve(authHandler, nil, mockStateService, oum)
+	time.Sleep(time.Second * 1)
+	mockAuthService.AssertExpectations(t)
+	mockClient.AssertExpectations(t)
+	mockStateService.AssertExpectations(t)
+
+	offlineReq := &proto.UserOfflineReq{Uid: authReq.Uid}
+	offlineRes := &proto.UserOfflineRes{Success: true}
+	mockStateService.On("Offline", mock.Anything, offlineReq).Return(offlineRes, nil).Once()
+
+	time.Sleep(time.Second * 2)
+	mockClient.AssertExpectations(t)
+	mockStateService.AssertExpectations(t)
+}
 
 func TestWsCmdProcess(t *testing.T) {
 	handler1 := new(mockCmdHandler)
@@ -73,18 +121,51 @@ func TestWsCmdProcess(t *testing.T) {
 
 func TestCheckIdle(t *testing.T) {
 	mockClient := new(mockUserClient)
+	now := time.Now()
 	ou := &onlineUser{
 		userClient:      mockClient,
 		pushCh:          make(chan interface{}, 10),
-		lastRequestTime: time.Now(),
+		lastRequestTime: now,
 	}
+	mockAuthService := new(mockAuthService)
+	mockStateService := new(mockStateService)
+	authHandler := &authHandler{mockAuthService}
+	oum := newOnlineUsersManager()
 
-	go ou.checkIdle()
-	time.Sleep(maxIdle - time.Second*2)
-	mockClient.AssertExpectations(t)
+	authReq := &authproto.CheckAuthReq{
+		Uid:   "peon1",
+		Token: "token1",
+	}
+	mockClient.On("ReadJSON", mock.Anything).Return(authReq, nil).Once()
+	mockClient.On("WriteJSON", mock.Anything).Return(nil).Once()
+	authRes := &authproto.CheckAuthRes{Success: true}
+	mockAuthService.On("Check", mock.Anything, mock.Anything).Return(authRes, nil).Once()
+	onlineReq := &proto.UserOnlineReq{
+		Uid:     authReq.Uid,
+		WebNode: web.DefaultId,
+	}
+	onlineRes := &proto.UserOnlineRes{Success: true}
+	mockStateService.On("Online", mock.Anything, onlineReq).Return(onlineRes, nil).Once()
+	readJSONReq := map[string]interface{}{}
+	waitUntil := time.After(maxIdle + 2*idleCheckInterval)
+	mockClient.On("ReadJSON", readJSONReq).WaitUntil(waitUntil).Return(readJSONReq, errors.New("conn closed")).Once()
 
-	mockClient.On("Close").Return(nil).Once()
+	go ou.serve(authHandler, nil, mockStateService, oum)
+	time.Sleep(maxIdle)
+	mockStateService.AssertExpectations(t)
+	mockAuthService.AssertExpectations(t)
+
+	lastSeenDelta := time.Since(ou.lastRequestTime)
+	assert.Equal(t, true, lastSeenDelta < maxIdle+2*time.Second)
+	assert.NotEqual(t, now, ou.lastRequestTime)
+
+	offlineReq := &proto.UserOfflineReq{Uid: authReq.Uid}
+	offlineRes := &proto.UserOfflineRes{Success: true}
+	mockStateService.On("Offline", mock.Anything, offlineReq).Return(offlineRes, nil).Once()
 	mockClient.On("WriteJSON", idleToLongResp).Return(nil).Once()
-	time.Sleep(time.Second*2 + idleCheckInterval*2)
+	mockClient.On("Close").Return(nil).Once()
+	time.Sleep(3 * idleCheckInterval)
+	assert.Equal(t, true, ou.closed)
+	mockStateService.AssertExpectations(t)
 	mockClient.AssertExpectations(t)
 }

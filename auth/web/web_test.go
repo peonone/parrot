@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/micro/go-micro/client"
+	"github.com/peonone/parrot"
 	"github.com/peonone/parrot/auth/proto"
 	"github.com/stretchr/testify/mock"
 )
@@ -18,21 +19,13 @@ type mockSrvClient struct {
 }
 
 func (m *mockSrvClient) Login(ctx context.Context, in *proto.LoginReq, opts ...client.CallOption) (*proto.LoginRes, error) {
-	params := make([]interface{}, 0, 2+len(opts))
-	params = append(params, ctx, in)
-	for _, opt := range opts {
-		params = append(params, ctx, opt)
-	}
+	params := parrot.MakeMockServiceParams(ctx, in, opts...)
 	returnVals := m.Called(params...)
 	return returnVals.Get(0).(*proto.LoginRes), returnVals.Error(1)
 }
 
 func (m *mockSrvClient) Check(ctx context.Context, in *proto.CheckAuthReq, opts ...client.CallOption) (*proto.CheckAuthRes, error) {
-	params := make([]interface{}, 0, 2+len(opts))
-	params = append(params, ctx, in)
-	for _, opt := range opts {
-		params = append(params, ctx, opt)
-	}
+	params := parrot.MakeMockServiceParams(ctx, in, opts...)
 	returnVals := m.Called(params...)
 	return returnVals.Get(0).(*proto.CheckAuthRes), returnVals.Error(1)
 }
