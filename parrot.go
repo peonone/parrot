@@ -3,6 +3,7 @@ package parrot
 import "github.com/go-redis/redis"
 import "github.com/streadway/amqp"
 
+//MakeRedisClient creates a redis client
 func MakeRedisClient() *redis.Client {
 	return redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
@@ -11,6 +12,7 @@ func MakeRedisClient() *redis.Client {
 	})
 }
 
+//MakeAMQPClient creates a AMQP channel
 func MakeAMQPClient() (*amqp.Channel, error) {
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	if err != nil {
