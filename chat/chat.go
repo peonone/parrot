@@ -5,9 +5,17 @@ import (
 	"github.com/peonone/parrot/chat/proto"
 )
 
-const OnlineStateKey = "online-user-nodes"
-const PushMsgExchangeName = "push-msg"
-const PushPrivateCmd = "private.push"
+const (
+	WebServiceName = "go.micro.web.chat"
+	SrvServiceName = "go.micro.srv.chat"
+)
+
+const (
+	OnlineStateKey      = "online-user-nodes"
+	PushMsgExchangeName = "push-msg"
+	PushPrivateCmd      = "private.push"
+	PushShoutCmd        = "shout.push"
+)
 
 func BuildPushMsg(cmd string, msg protobuf.Message) (*proto.PushMsg, error) {
 	msgBody, err := protobuf.Marshal(msg)

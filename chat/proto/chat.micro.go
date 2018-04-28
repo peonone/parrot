@@ -10,8 +10,11 @@ It is generated from these files:
 It has these top-level messages:
 	SendPMReq
 	SendPMRes
+	SendShoutReq
+	SendShoutRes
 	PushMsg
 	SentPrivateMsg
+	SentShoutMsg
 	UserOnlineReq
 	UserOnlineRes
 	UserOfflineReq
@@ -95,6 +98,58 @@ type Private struct {
 
 func (h *Private) Send(ctx context.Context, in *SendPMReq, out *SendPMRes) error {
 	return h.PrivateHandler.Send(ctx, in, out)
+}
+
+// Client API for Shout service
+
+type ShoutService interface {
+	Send(ctx context.Context, in *SendShoutReq, opts ...client.CallOption) (*SendShoutRes, error)
+}
+
+type shoutService struct {
+	c           client.Client
+	serviceName string
+}
+
+func ShoutServiceClient(serviceName string, c client.Client) ShoutService {
+	if c == nil {
+		c = client.NewClient()
+	}
+	if len(serviceName) == 0 {
+		serviceName = "proto"
+	}
+	return &shoutService{
+		c:           c,
+		serviceName: serviceName,
+	}
+}
+
+func (c *shoutService) Send(ctx context.Context, in *SendShoutReq, opts ...client.CallOption) (*SendShoutRes, error) {
+	req := c.c.NewRequest(c.serviceName, "Shout.Send", in)
+	out := new(SendShoutRes)
+	err := c.c.Call(ctx, req, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for Shout service
+
+type ShoutHandler interface {
+	Send(context.Context, *SendShoutReq, *SendShoutRes) error
+}
+
+func RegisterShoutHandler(s server.Server, hdlr ShoutHandler, opts ...server.HandlerOption) {
+	s.Handle(s.NewHandler(&Shout{hdlr}, opts...))
+}
+
+type Shout struct {
+	ShoutHandler
+}
+
+func (h *Shout) Send(ctx context.Context, in *SendShoutReq, out *SendShoutRes) error {
+	return h.ShoutHandler.Send(ctx, in, out)
 }
 
 // Client API for State service

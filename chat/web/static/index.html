@@ -20,10 +20,10 @@
   </head>
   <body>
     <div id="login">
-      <form id="loginForm">
+      <form id="loginForm" onsubmit="javascript:login(); return false;">
         <input name="username" placeholder="User Name">
         <input type="password" name="password" placeholder="Password">
-        <button onclick="javascript:login(); return false;">Login</button>
+        <input type="submit" value="login"/>
       </form>
     </div>
     <div id="chat" style="display:none;">
@@ -31,21 +31,38 @@
       <tr>
         <td valign="top" width="25%">
           <p>
-            <form id="private">
+            <div>
+              <h4>Send a private message to another online user</h4>
+            <form id="private" onsubmit="javascript:sendPM();return false;">
               <input name="command" type="hidden" value="private.send" />
               <p>
                 To: <br>
-                <input id="toUID" name="toUID" placeholder="the user's UID"/>
+                <input name="toUID" placeholder="the user's UID"/>
               </p>
               <p>
                 Content:<br>
-                <textarea id="content" name="content" placeholder="blabla..."></textarea>
+                <textarea name="content" placeholder="blabla..."></textarea>
               </p>
               <p>
-                <button type="button" id="send" onClick="javascript:sendPM();return false;">Send</button>
+                <input type="submit" value="Send"/>
               </p>
               
             </form>
+            </div>
+            <div>
+                <h4>Shout to the entire world</h4>
+              <form id="shout" onsubmit="javascript:sendShout();return false;">
+                <input name="command" type="hidden" value="shout.send" />
+                <p>
+                  Content:<br>
+                  <textarea name="content" placeholder="blabla..."></textarea>
+                </p>
+                <p>
+                  <input type="submit" value="Send"/>
+                </p>
+                
+              </form>
+              </div>
           </p>
         </td>
         <td valign="top" width="75%">

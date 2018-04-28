@@ -2,7 +2,6 @@ package web
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -15,6 +14,7 @@ import (
 )
 
 func TestServe(t *testing.T) {
+	maxIdle = time.Second * 5
 	mockClient := new(mockUserClient)
 	ou := &onlineUser{
 		userClient:      mockClient,
@@ -40,8 +40,8 @@ func TestServe(t *testing.T) {
 	}
 	onlineRes := &proto.UserOnlineRes{Success: true}
 	mockStateService.On("Online", mock.Anything, onlineReq).Return(onlineRes, nil).Once()
-	readJSONReq := map[string]interface{}{}
-	mockClient.On("ReadJSON", readJSONReq).WaitUntil(time.After(time.Second*2)).Return(readJSONReq, io.EOF).Once()
+	var readJSONReq map[string]interface{}
+	mockClient.On("ReadJSON", &readJSONReq).WaitUntil(time.After(time.Second*2)).Return(&readJSONReq, io.EOF).Once()
 
 	go ou.serve(authHandler, nil, mockStateService, oum)
 	time.Sleep(time.Second * 1)
@@ -59,6 +59,7 @@ func TestServe(t *testing.T) {
 }
 
 func TestWsCmdProcess(t *testing.T) {
+	maxIdle = time.Second * 5
 	handler1 := new(mockCmdHandler)
 	handler2 := new(mockCmdHandler)
 
@@ -81,7 +82,7 @@ func TestWsCmdProcess(t *testing.T) {
 	handler2.On("canHandle", cmd).Return(true).Once()
 	handler2.On("validate", mock.Anything).Return(nil).Once()
 	handler2.On("handle", ou, req).Return().Once()
-	mockClient.On("ReadJSON", mock.Anything).Return(req, nil).Once()
+	mockClient.On("ReadJSON", mock.Anything).Return(&req, nil).Once()
 	err := processWsRequest(ou, handlers)
 	assert.Nil(t, err)
 	assert.Equal(t, len(ou.pushCh), 0)
@@ -92,14 +93,13 @@ func TestWsCmdProcess(t *testing.T) {
 	// test of validate error
 	handler1.On("canHandle", cmd).Return(false).Once()
 	handler2.On("canHandle", cmd).Return(true).Once()
-	mockClient.On("ReadJSON", mock.Anything).Return(req, nil).Once()
+	mockClient.On("ReadJSON", mock.Anything).Return(&req, nil).Once()
 	expectErr := errors.New("input error")
 	handler2.On("validate", mock.Anything).Return(expectErr).Once()
 	err = processWsRequest(ou, handlers)
 	assert.Nil(t, err)
 	assert.Equal(t, len(ou.pushCh), 1)
 	res, ok := (<-ou.pushCh).(*genericResp)
-	fmt.Printf("%v\n", res)
 	assert.Equal(t, ok, true)
 	assert.Equal(t, res.Success, false)
 	assert.Equal(t, res.ErrMsg, expectErr.Error())
@@ -110,7 +110,7 @@ func TestWsCmdProcess(t *testing.T) {
 	// test of invalid cmd
 	handler1.On("canHandle", cmd).Return(false).Once()
 	handler2.On("canHandle", cmd).Return(false).Once()
-	mockClient.On("ReadJSON", mock.Anything).Return(req, nil).Once()
+	mockClient.On("ReadJSON", mock.Anything).Return(&req, nil).Once()
 	err = processWsRequest(ou, handlers)
 	assert.Nil(t, err)
 	assert.Equal(t, len(ou.pushCh), 1)
@@ -146,9 +146,9 @@ func TestCheckIdle(t *testing.T) {
 	}
 	onlineRes := &proto.UserOnlineRes{Success: true}
 	mockStateService.On("Online", mock.Anything, onlineReq).Return(onlineRes, nil).Once()
-	readJSONReq := map[string]interface{}{}
+	var readJSONReq map[string]interface{}
 	waitUntil := time.After(maxIdle + 2*idleCheckInterval)
-	mockClient.On("ReadJSON", readJSONReq).WaitUntil(waitUntil).Return(readJSONReq, errors.New("conn closed")).Once()
+	mockClient.On("ReadJSON", &readJSONReq).WaitUntil(waitUntil).Return(&readJSONReq, errors.New("conn closed")).Once()
 
 	go ou.serve(authHandler, nil, mockStateService, oum)
 	time.Sleep(maxIdle)

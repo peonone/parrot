@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 
+	"github.com/peonone/parrot/chat"
+
 	goweb "github.com/micro/go-web"
 	"github.com/peonone/parrot/chat/web"
 )
@@ -10,7 +12,7 @@ import (
 func main() {
 	// New web service
 	service := goweb.NewService(
-		goweb.Name(web.Name),
+		goweb.Name(chat.WebServiceName),
 	)
 
 	if err := service.Init(); err != nil {

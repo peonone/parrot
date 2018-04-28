@@ -8,9 +8,6 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// Name is the chat service name
-const Name = "go.micro.srv.chat"
-
 type mqSender interface {
 	sendMQMsg(key string, body []byte) error
 }
@@ -54,4 +51,5 @@ func Init(service micro.Service) {
 	}
 	proto.RegisterPrivateHandler(service.Server(), &privateHandler{baseHandler})
 	proto.RegisterStateHandler(service.Server(), &stateHandler{baseHandler})
+	proto.RegisterShoutHandler(service.Server(), &worldShoutHandler{baseHandler})
 }

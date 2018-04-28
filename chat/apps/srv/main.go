@@ -4,13 +4,15 @@ import (
 	"log"
 	"time"
 
+	"github.com/peonone/parrot/chat"
+
 	"github.com/micro/go-micro"
 	"github.com/peonone/parrot/chat/srv"
 )
 
 func main() {
 	service := micro.NewService(
-		micro.Name(srv.Name),
+		micro.Name(chat.SrvServiceName),
 		micro.RegisterTTL(time.Second*10),
 		micro.RegisterInterval(time.Second*5),
 	)

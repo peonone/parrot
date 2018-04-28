@@ -8,7 +8,6 @@ import (
 	"github.com/micro/go-micro/client"
 	"github.com/peonone/parrot/chat"
 	"github.com/peonone/parrot/chat/proto"
-	"github.com/peonone/parrot/chat/srv"
 )
 
 const sendPMCmd = "private.send"
@@ -28,7 +27,7 @@ type privateMessagePush struct {
 func newPrivateMessageHandler(rpcCli client.Client, bch *baseCmdHandler) commandHandler {
 	return &privateMessageHandler{
 		baseCmdHandler: bch,
-		cli:            proto.PrivateServiceClient(srv.Name, rpcCli),
+		cli:            proto.PrivateServiceClient(chat.SrvServiceName, rpcCli),
 	}
 }
 

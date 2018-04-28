@@ -52,3 +52,7 @@ function getFormData($form){
 function sendPM() {
   ws.send(JSON.stringify(getFormData($("#private"))));
 }
+
+function sendShout() {
+  ws.send(JSON.stringify(getFormData($("#shout"))))
+}

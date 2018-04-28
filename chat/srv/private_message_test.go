@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type testDataInfo struct {
+type pmTestData struct {
 	fromUID string
 	toUID   string
 	online  bool
@@ -26,7 +26,7 @@ func TestPrivateMessage(t *testing.T) {
 		mqSender:   mqMock,
 	}
 	ph := &privateHandler{baseHandler}
-	testDatas := []testDataInfo{
+	testDatas := []pmTestData{
 		{
 			fromUID: "3x",
 			toUID:   "peon",

@@ -5,6 +5,10 @@ service Private{
     rpc Send(SendPMReq) returns (SendPMRes);
 }
 
+service Shout{
+    rpc Send(SendShoutReq) returns (SendShoutRes);
+}
+
 service State {
     rpc Online(UserOnlineReq) returns (UserOnlineRes);
     rpc Offline(UserOfflineReq) returns (UserOfflineRes);
@@ -21,6 +25,16 @@ message SendPMRes {
     string errMsg = 2;
 }
 
+message SendShoutReq {
+    string fromUID = 1;
+    string content = 2;
+}
+
+message SendShoutRes {
+    bool success = 1;
+    string errMsg = 2;
+}
+
 message PushMsg {
     string command = 1;
     bytes body = 2;
@@ -28,6 +42,11 @@ message PushMsg {
 
 message SentPrivateMsg {
     SendPMReq req = 1;
+    int64 sentTimestamp = 2;
+}
+
+message SentShoutMsg {
+    SendShoutReq req = 1;
     int64 sentTimestamp = 2;
 }
 

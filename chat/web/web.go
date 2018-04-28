@@ -12,15 +12,13 @@ import (
 	"github.com/micro/go-micro/client"
 	"github.com/micro/go-web"
 	"github.com/peonone/parrot"
+	"github.com/peonone/parrot/chat"
 	"github.com/peonone/parrot/chat/proto"
-	"github.com/peonone/parrot/chat/srv"
 )
 
-// Name is the chat web service name
-const Name = "go.micro.web.chat"
+var maxIdle = time.Second * 20
 
 const (
-	maxIdle           = time.Second * 5
 	idleCheckInterval = time.Second / 2
 )
 
@@ -79,12 +77,13 @@ func Init(service web.Service) func() {
 	ouManager := newOnlineUsersManager()
 	rpcClient := client.NewClient(client.RequestTimeout(time.Second * 120))
 	authHandler := newAuthHandler(rpcClient)
-	stateClient := proto.StateServiceClient(srv.Name, rpcClient)
+	stateClient := proto.StateServiceClient(chat.SrvServiceName, rpcClient)
 	bch := &baseCmdHandler{
 		oum: ouManager,
 	}
 	cmdHandlers := []commandHandler{
 		newPrivateMessageHandler(rpcClient, bch),
+		newWorldShoutHandler(rpcClient, bch),
 	}
 	amqpClient, err := parrot.MakeAMQPClient()
 	if err != nil {
@@ -184,8 +183,8 @@ func (c *onlineUser) serve(
 
 func processWsRequest(c *onlineUser, cmdHandlers []commandHandler) error {
 	// the WS client may send various kinds of request
-	req := make(map[string]interface{})
-	err := c.userClient.ReadJSON(req)
+	var req map[string]interface{}
+	err := c.userClient.ReadJSON(&req)
 	if err != nil {
 		return err
 	}

@@ -27,9 +27,9 @@ func (m *onlineUsersManager) offline(c *onlineUser) {
 		delete(m.onlineUIDs, c.uid)
 		m.mu.Unlock()
 	}
-	close(c.pushCh)
 	c.mu.Lock()
 	c.closed = true
+	close(c.pushCh)
 	c.mu.Unlock()
 }
 
@@ -45,4 +45,8 @@ func (m *onlineUsersManager) getOnlineClient(uid string) *onlineUser {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.onlineUIDs[uid]
+}
+
+func (m *onlineUsersManager) getAllOnlineUsers() map[string]*onlineUser {
+	return m.onlineUIDs
 }
