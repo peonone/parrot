@@ -27,10 +27,7 @@ func (m *onlineUsersManager) offline(c *onlineUser) {
 		delete(m.onlineUIDs, c.uid)
 		m.mu.Unlock()
 	}
-	c.mu.Lock()
-	c.closed = true
-	close(c.pushCh)
-	c.mu.Unlock()
+	c.close()
 }
 
 func (m *onlineUsersManager) clear() {

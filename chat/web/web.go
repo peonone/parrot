@@ -72,6 +72,15 @@ var (
 
 var ouManager *onlineUsersManager
 
+func (u *onlineUser) close() {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if !u.closed {
+		u.closed = true
+		close(u.pushCh)
+	}
+}
+
 // Init initializes required resources and register handlers
 func Init(service web.Service) func() {
 	ouManager := newOnlineUsersManager()
@@ -122,58 +131,63 @@ func Init(service web.Service) func() {
 	}
 }
 
-func (c *onlineUser) sendToClient() {
-	for msg := range c.pushCh {
-		c.userClient.WriteJSON(msg)
+func (u *onlineUser) sendToClient() {
+	for msg := range u.pushCh {
+		u.userClient.WriteJSON(msg)
 	}
 }
 
-func (c *onlineUser) checkIdle() {
-	for !c.closed {
-		c.mu.Lock()
-		lastReqTime := c.lastRequestTime
-		c.mu.Unlock()
+func (u *onlineUser) checkIdle() {
+	for !u.closed {
+		u.mu.Lock()
+		lastReqTime := u.lastRequestTime
+		u.mu.Unlock()
 		if time.Since(lastReqTime) >= maxIdle {
-			c.userClient.WriteJSON(idleToLongResp)
-			c.userClient.Close()
+			u.pushCh <- idleToLongResp
+			u.userClient.Close()
+			u.close()
 			break
 		}
 		time.Sleep(idleCheckInterval)
 	}
 }
 
-func (c *onlineUser) serve(
+func (u *onlineUser) serve(
 	authHandler *authHandler, cmdHandlers []commandHandler,
 	stateService proto.StateService, ouManager *onlineUsersManager) error {
 	defer func() {
 		req := &proto.UserOfflineReq{
-			Uid: c.uid,
+			Uid: u.uid,
 		}
 		stateService.Offline(context.Background(), req)
+		ouManager.offline(u)
 	}()
-	defer ouManager.offline(c)
-	go c.sendToClient()
-	go c.checkIdle()
-	err := authHandler.doAuth(c)
+	go u.sendToClient()
+	go u.checkIdle()
+	err := authHandler.doAuth(u)
 
 	if err == io.EOF {
+		return nil
+	} else if u.closed {
 		return nil
 	} else if err != nil {
 		return err
 	}
 	req := &proto.UserOnlineReq{
-		Uid:     c.uid,
+		Uid:     u.uid,
 		WebNode: web.DefaultId,
 	}
 	_, err = stateService.Online(context.Background(), req)
 	if err != nil {
 		return err
 	}
-	ouManager.online(c)
+	ouManager.online(u)
 
 	for {
-		err = processWsRequest(c, cmdHandlers)
+		err = processWsRequest(u, cmdHandlers)
 		if err == io.EOF {
+			return nil
+		} else if u.closed {
 			return nil
 		} else if err != nil {
 			return err
@@ -181,20 +195,20 @@ func (c *onlineUser) serve(
 	}
 }
 
-func processWsRequest(c *onlineUser, cmdHandlers []commandHandler) error {
+func processWsRequest(u *onlineUser, cmdHandlers []commandHandler) error {
 	// the WS client may send various kinds of request
 	var req map[string]interface{}
-	err := c.userClient.ReadJSON(&req)
+	err := u.userClient.ReadJSON(&req)
 	if err != nil {
 		return err
 	}
-	c.mu.Lock()
-	c.lastRequestTime = time.Now()
-	c.mu.Unlock()
+	u.mu.Lock()
+	u.lastRequestTime = time.Now()
+	u.mu.Unlock()
 	cmd := req["command"]
 	cmdStr, ok := cmd.(string)
 	if cmd == nil || !ok {
-		c.pushCh <- invalidCmdResp
+		u.pushCh <- invalidCmdResp
 		return nil
 	}
 
@@ -202,19 +216,19 @@ func processWsRequest(c *onlineUser, cmdHandlers []commandHandler) error {
 	for _, h := range cmdHandlers {
 		if h.canHandle(cmdStr) {
 			if err = h.validate(req); err != nil {
-				c.pushCh <- &genericResp{
+				u.pushCh <- &genericResp{
 					Success: false,
 					ErrMsg:  err.Error(),
 				}
 			} else {
-				h.handle(c, req)
+				h.handle(u, req)
 			}
 			handled = true
 			break
 		}
 	}
 	if !handled {
-		c.pushCh <- invalidCmdResp
+		u.pushCh <- invalidCmdResp
 	}
 	return nil
 }
