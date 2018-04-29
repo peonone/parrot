@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -27,7 +28,9 @@ func (s *mockPrivateMessageService) Send(ctx context.Context, in *proto.SendPMRe
 
 func TestPrivateMsgHandler(t *testing.T) {
 	oum := newOnlineUsersManager()
-	baseCmdHandler := &baseCmdHandler{oum}
+
+	stat := newStat(os.Stderr)
+	baseCmdHandler := &baseCmdHandler{oum, stat}
 	mockService := new(mockPrivateMessageService)
 	handler := &privateMessageHandler{baseCmdHandler, mockService}
 
@@ -57,13 +60,18 @@ func TestPrivateMsgHandler(t *testing.T) {
 	mockService.AssertExpectations(t)
 	assert.Equal(t, len(ou.pushCh), 1)
 	assert.Equal(t, successRes, <-ou.pushCh)
-
+	assert.Equal(t, stat.totalInfo.requestReceived, 1)
+	assert.Equal(t, stat.totalInfo.requestWithErr, 0)
+	assert.Equal(t, stat.minuteInfo.requestReceived, 1)
 	errRes := &proto.SendPMRes{Success: false, ErrMsg: "err1"}
 	mockService.On("Send", context.Background(), expectedReq).Return(errRes, nil).Once()
 	handler.handle(ou, req)
 	mockService.AssertExpectations(t)
 	assert.Equal(t, len(ou.pushCh), 1)
 	assert.Equal(t, errRes, <-ou.pushCh)
+	assert.Equal(t, stat.totalInfo.requestReceived, 2)
+	assert.Equal(t, stat.totalInfo.requestWithErr, 0)
+	assert.Equal(t, stat.minuteInfo.requestReceived, 2)
 
 	err := errors.New("internal err")
 	var emptyResp *proto.SendPMRes
@@ -76,11 +84,15 @@ func TestPrivateMsgHandler(t *testing.T) {
 		ErrMsg:  err.Error(),
 	}
 	assert.Equal(t, expectedRes, <-ou.pushCh)
+	assert.Equal(t, stat.totalInfo.requestReceived, 3)
+	assert.Equal(t, stat.totalInfo.requestWithErr, 1)
+	assert.Equal(t, stat.minuteInfo.requestReceived, 3)
 }
 
 func TestPrivateMsgPushHandler(t *testing.T) {
 	oum := newOnlineUsersManager()
-	baseCmdHandler := &baseCmdHandler{oum}
+	stat := newStat(os.Stderr)
+	baseCmdHandler := &baseCmdHandler{oum, stat}
 	mockService := new(mockPrivateMessageService)
 	handler := &privateMessageHandler{baseCmdHandler, mockService}
 
@@ -110,10 +122,14 @@ func TestPrivateMsgPushHandler(t *testing.T) {
 	assert.Equal(t, ok, true)
 	assert.Equal(t, respStruct.FromUID, pbMsg.Req.FromUID)
 	assert.Equal(t, respStruct.Content, pbMsg.Req.Content)
+	assert.Equal(t, stat.totalInfo.msgPushed, 1)
+	assert.Equal(t, stat.minuteInfo.msgPushed, 1)
 
 	pbMsg.Req.ToUID += "xxx"
 	pushMsg, err = chat.BuildPushMsg(chat.PushPrivateCmd, pbMsg)
 	assert.Nil(t, err)
 	handler.handlePush(pushMsg)
 	assert.Equal(t, len(ou.pushCh), 0)
+	assert.Equal(t, stat.totalInfo.msgPushed, 1)
+	assert.Equal(t, stat.minuteInfo.msgPushed, 1)
 }

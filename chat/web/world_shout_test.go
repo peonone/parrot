@@ -27,7 +27,7 @@ func (s *mockWorldShoutService) Send(ctx context.Context, in *proto.SendShoutReq
 
 func TestWorldShoutHandler(t *testing.T) {
 	oum := newOnlineUsersManager()
-	baseCmdHandler := &baseCmdHandler{oum}
+	baseCmdHandler := &baseCmdHandler{oum, nil}
 	mockService := new(mockWorldShoutService)
 	handler := &worldShoutHandler{baseCmdHandler, mockService}
 
@@ -78,7 +78,7 @@ func TestWorldShoutHandler(t *testing.T) {
 
 func TestWorldShoutPushHandler(t *testing.T) {
 	oum := newOnlineUsersManager()
-	baseCmdHandler := &baseCmdHandler{oum}
+	baseCmdHandler := &baseCmdHandler{oum, nil}
 	mockService := new(mockWorldShoutService)
 	handler := &worldShoutHandler{baseCmdHandler, mockService}
 

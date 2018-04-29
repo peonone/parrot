@@ -63,13 +63,18 @@ func (h *privateMessageHandler) handle(c *onlineUser, req map[string]interface{}
 		Content: req["content"].(string),
 	}
 	rpcRes, err := h.cli.Send(context.Background(), rpcReq)
+	errCnt := 0
 	if err != nil {
 		c.pushCh <- &genericResp{
 			Success: false,
 			ErrMsg:  err.Error(),
 		}
+		errCnt = 1
 	} else {
 		c.pushCh <- rpcRes
+	}
+	if h.stat != nil {
+		h.stat.addRequestReceived(1, errCnt)
 	}
 }
 
@@ -96,5 +101,8 @@ func (h *privateMessageHandler) handlePush(pushMsg *proto.PushMsg) {
 		log.Printf("user[%s] is not online", pushPrivMsg.Req.ToUID)
 	} else {
 		c.pushCh <- resp
+		if h.stat != nil {
+			h.stat.addMessagePushed(1)
+		}
 	}
 }

@@ -53,13 +53,18 @@ func (h *worldShoutHandler) handle(c *onlineUser, req map[string]interface{}) {
 		Content: req["content"].(string),
 	}
 	rpcRes, err := h.cli.Send(context.Background(), rpcReq)
+	errCnt := 0
 	if err != nil {
 		c.pushCh <- &genericResp{
 			Success: false,
 			ErrMsg:  err.Error(),
 		}
+		errCnt = 1
 	} else {
 		c.pushCh <- rpcRes
+	}
+	if h.stat != nil {
+		h.stat.addRequestReceived(1, errCnt)
 	}
 }
 
@@ -80,11 +85,16 @@ func (h *worldShoutHandler) handlePush(pushMsg *proto.PushMsg) {
 		Content:       pushShoutMsg.Req.Content,
 		SentTimestamp: pushShoutMsg.SentTimestamp,
 	}
+	pushedCnt := 0
 	for _, u := range h.oum.getAllOnlineUsers() {
 		u.mu.Lock()
 		if !u.closed {
+			pushedCnt++
 			u.pushCh <- resp
 		}
 		u.mu.Unlock()
+	}
+	if h.stat != nil {
+		h.stat.addMessagePushed(pushedCnt)
 	}
 }

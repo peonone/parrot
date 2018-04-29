@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -27,7 +28,8 @@ var upgrader = websocket.Upgrader{
 }
 
 type baseCmdHandler struct {
-	oum *onlineUsersManager
+	oum  *onlineUsersManager
+	stat *stat
 }
 
 type commandHandler interface {
@@ -86,9 +88,20 @@ func Init(service web.Service) func() {
 	ouManager := newOnlineUsersManager()
 	rpcClient := client.NewClient(client.RequestTimeout(time.Second * 120))
 	authHandler := newAuthHandler(rpcClient)
+
+	var stat *stat
+	statLogF, err := os.OpenFile("logs/chat_stat.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		log.Printf("failed to open stat log file: %s", err)
+	} else {
+		stat = newStat(statLogF)
+		go stat.runStat()
+	}
+
 	stateClient := proto.StateServiceClient(chat.SrvServiceName, rpcClient)
 	bch := &baseCmdHandler{
-		oum: ouManager,
+		oum:  ouManager,
+		stat: stat,
 	}
 	cmdHandlers := []commandHandler{
 		newPrivateMessageHandler(rpcClient, bch),
