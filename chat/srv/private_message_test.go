@@ -2,6 +2,7 @@ package srv
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,6 +17,7 @@ type pmTestData struct {
 	toUID   string
 	online  bool
 	content string
+	rdsErr  error
 }
 
 func TestPrivateMessage(t *testing.T) {
@@ -37,6 +39,12 @@ func TestPrivateMessage(t *testing.T) {
 			toUID:   "bla",
 			online:  false,
 		},
+		{
+			fromUID: "3x",
+			toUID:   "bla",
+			online:  false,
+			rdsErr:  errors.New("err1"),
+		},
 	}
 	res := new(proto.SendPMRes)
 	for _, testData := range testDatas {
@@ -46,7 +54,9 @@ func TestPrivateMessage(t *testing.T) {
 			Content: testData.content,
 		}
 		var ocReturnVals []interface{}
-		if testData.online {
+		if testData.rdsErr != nil {
+			ocReturnVals = []interface{}{"", testData.rdsErr}
+		} else if testData.online {
 			ocReturnVals = []interface{}{"111", nil}
 		} else {
 			ocReturnVals = []interface{}{"", redis.Nil}
@@ -57,8 +67,13 @@ func TestPrivateMessage(t *testing.T) {
 			// TODO verify the message sent to MQ is valid
 			mqMock.On("sendMQMsg", mock.Anything, mock.Anything).Return(nil).Once()
 		}
-		ph.Send(context.Background(), req, res)
-		assert.Equal(t, res.Success, testData.online)
+		err := ph.Send(context.Background(), req, res)
+
+		if testData.rdsErr != nil {
+			assert.Equal(t, err, testData.rdsErr)
+		} else {
+			assert.Equal(t, res.Success, testData.online)
+		}
 		ssMock.AssertExpectations(t)
 		mqMock.AssertExpectations(t)
 	}

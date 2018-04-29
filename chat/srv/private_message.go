@@ -30,7 +30,7 @@ func (h *privateHandler) Send(ctx context.Context, req *proto.SendPMReq, res *pr
 		res.ErrMsg = fmt.Sprintf("user %s is not online", req.ToUID)
 		return nil
 	} else if err != nil {
-		return nil
+		return err
 	}
 	key := fmt.Sprintf("%s.private.push", onlineNode)
 	pbMsg := &proto.SentPrivateMsg{
