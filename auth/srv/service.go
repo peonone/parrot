@@ -30,7 +30,7 @@ var authHmacKey []byte
 func genHmacKey() []byte {
 	key := make([]byte, 0, 64)
 	for i := 0; i < 64; i++ {
-		key = append(key, byte(rand.Int31n(63)))
+		key = append(key, byte(rand.Int31n(255)))
 	}
 	return key
 }
