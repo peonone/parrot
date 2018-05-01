@@ -38,7 +38,6 @@ func TestAuth(t *testing.T) {
 		lastRequestTime: time.Now(),
 	}
 	req := &authproto.CheckAuthReq{
-		Uid:   "user1",
 		Token: "token",
 	}
 	mockClient.On("ReadJSON", mock.Anything).Return(req, nil).Times(2)
@@ -50,9 +49,11 @@ func TestAuth(t *testing.T) {
 
 	correctRes := &authproto.CheckAuthRes{
 		Success: true,
+		Uid:     "user1",
 	}
 	mockService.On("Check", context.Background(), req).Return(correctRes, nil).Once()
 	assert.Nil(t, handler.doAuth(ou))
+	assert.Equal(t, correctRes.Uid, ou.uid)
 	mockClient.AssertExpectations(t)
 	mockService.AssertExpectations(t)
 }

@@ -2,41 +2,60 @@ package srv
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
+	"log"
 	"math/rand"
 	"time"
 
-	"github.com/peonone/parrot"
-
+	jwt "github.com/dgrijalva/jwt-go"
 	micro "github.com/micro/go-micro"
 	proto "github.com/peonone/parrot/auth/proto"
 )
 
 const Name = "go.micro.srv.auth"
 
+// TODO use immutable configuration instead of variable
+var tokenExpDur = time.Minute * 5
+
+var tokenSignMethod = jwt.SigningMethodHS256
+
 type authService struct {
-	tokenStore
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
+var authHmacKey []byte
+
+func genHmacKey() []byte {
+	key := make([]byte, 0, 64)
+	for i := 0; i < 64; i++ {
+		key = append(key, byte(rand.Int31n(63)))
+	}
+	return key
+}
+
 func init() {
 	rand.Seed(time.Now().Unix())
+	var err error
+	authHmacKey, err = ioutil.ReadFile("conf/auth_hmac_key")
+	if err != nil {
+		log.Printf("can't load HMAC key for auth: %s, generating a random one", err)
+		authHmacKey = genHmacKey()
+	}
 }
 
 //Init initialize the auth service
 func Init(service micro.Service) {
-	rdsClient := parrot.MakeRedisClient()
-	proto.RegisterAuthHandler(service.Server(), &authService{
-		&redisTokenStore{rdsClient},
-	})
+	proto.RegisterAuthHandler(service.Server(), new(authService))
 }
 
-func (a *authService) generateToken() string {
-	b := make([]rune, 32)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
+func (a *authService) generateToken(uid string) (string, error) {
+	token := jwt.NewWithClaims(tokenSignMethod, jwt.MapClaims{
+		"sub": uid,
+		"exp": float64(time.Now().Add(tokenExpDur).Unix()),
+	})
+	return token.SignedString(authHmacKey)
 }
 
 //Login is the login service handler
@@ -48,21 +67,41 @@ func (a *authService) Login(ctx context.Context, req *proto.LoginReq, res *proto
 		return nil
 	}
 	res.Success = true
-	res.Uid = req.Username
-	res.Token = a.generateToken()
-	return a.saveToken(res.Uid, res.Token)
+	token, err := a.generateToken(req.Username)
+	if err != nil {
+		return err
+	}
+	res.Token = token
+	return nil
 }
 
 //Check is the auth check service handler
 func (a *authService) Check(ctx context.Context, req *proto.CheckAuthReq, res *proto.CheckAuthRes) error {
-	token, err := a.getToken(req.Uid)
+	token, err := jwt.Parse(req.Token, func(token *jwt.Token) (interface{}, error) {
+		method, ok := token.Method.(*jwt.SigningMethodHMAC)
+		if !ok || method != tokenSignMethod {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return authHmacKey, nil
+	})
+
 	if err != nil {
+		log.Printf("failed to parse auth token: %s", err)
 		res.Success = false
 		res.ErrMsg = "Invalid token"
 		return nil
 	}
-	res.Success = token == req.Token
-	if !res.Success {
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		if int64(claims["exp"].(float64)) > time.Now().Unix() {
+			res.Success = true
+			res.Uid = claims["sub"].(string)
+		} else {
+			res.Success = false
+			res.ErrMsg = "Token expired"
+		}
+	} else {
+		res.Success = false
 		res.ErrMsg = "Invalid token"
 	}
 	return nil

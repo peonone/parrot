@@ -15,16 +15,15 @@ message LoginReq {
 message LoginRes {
     bool success = 1;
     string errMsg = 2;
-    string uid = 3;
-    string token = 4;
+    string token = 3;
 }
 
 message CheckAuthReq {
-    string uid = 1;
-    string token = 2;
+    string token = 1;
 }
 
 message CheckAuthRes {
     bool success = 1;
-    string errMsg = 2;
+    string uid = 2;
+    string errMsg = 3;
 }

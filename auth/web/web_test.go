@@ -68,7 +68,6 @@ func TestDoLogin(t *testing.T) {
 		res := &proto.LoginRes{
 			Success: testInfo.success,
 			ErrMsg:  testInfo.errMsg,
-			Uid:     testInfo.uid,
 			Token:   testInfo.token,
 		}
 		mockCli.On("Login", mock.Anything, mock.Anything).Return(res, nil).Once()

@@ -2,11 +2,12 @@ package srv
 
 import (
 	"context"
-	"errors"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/peonone/parrot/auth/proto"
-	"github.com/stretchr/testify/mock"
 )
 
 type authTestInfo struct {
@@ -21,84 +22,57 @@ var testDatas = []authTestInfo{
 	authTestInfo{"valid", "valid!", true},
 }
 
-type mockTokenStore struct {
-	mock.Mock
-}
-
-func (ts *mockTokenStore) saveToken(uid string, token string) error {
-	returnVals := ts.Called(uid, token)
-	return returnVals.Error(0)
-}
-
-func (ts *mockTokenStore) getToken(uid string) (string, error) {
-	returnVals := ts.Called(uid)
-	return returnVals.String(0), returnVals.Error(1)
-}
 func TestDoAndValidateAuth(t *testing.T) {
+	tokenExpDur = time.Second * 5
 	validTokens := make([]string, 0, 2)
-	mockTs := &mockTokenStore{}
-	a := authService{mockTs}
+	service := authService{}
 	for _, testData := range testDatas {
-		req := &proto.LoginReq{
+		loginReq := &proto.LoginReq{
 			Username: testData.username,
 			Password: testData.password,
 		}
-		res := new(proto.LoginRes)
-		if testData.expectedSuccess {
-			mockTs.On("saveToken", mock.Anything, mock.Anything).Return(nil).Once()
-		}
-		a.Login(context.Background(), req, res)
-		if testData.expectedSuccess != res.Success {
+		loginRes := new(proto.LoginRes)
+		service.Login(context.Background(), loginReq, loginRes)
+		if testData.expectedSuccess != loginRes.Success {
 			t.Errorf("DoAuth: expect get success=%v but got %v for %s",
-				testData.expectedSuccess, res.Success, testData.username)
+				testData.expectedSuccess, loginRes.Success, testData.username)
 			return
 		}
-		mockTs.AssertExpectations(t)
-		if res.Success {
-			if len(res.Token) == 0 {
+		if loginRes.Success {
+			if len(loginRes.Token) == 0 {
 				t.Errorf("DoAuth: got empty token for a succeeded auth request from %s",
 					testData.username)
 				return
 			}
-			validTokens = append(validTokens, res.Token)
+			validTokens = append(validTokens, loginRes.Token)
 		}
-		validateReq := &proto.CheckAuthReq{
-			Uid:   res.Uid,
-			Token: res.Token,
+		checkReq := &proto.CheckAuthReq{
+			Token: loginRes.Token,
 		}
-		validateRes := new(proto.CheckAuthRes)
+		checkRes := new(proto.CheckAuthRes)
 
-		var returnVals []interface{}
+		err := service.Check(context.Background(), checkReq, checkRes)
 		if testData.expectedSuccess {
-			returnVals = []interface{}{res.Token, nil}
+			assert.Nil(t, err)
+			assert.Equal(t, loginReq.Username, checkRes.Uid)
 		} else {
-			returnVals = []interface{}{"", errors.New("not found")}
+			assert.Equal(t, "", checkRes.Uid)
 		}
-		mockTs.On("getToken", res.Uid).Return(returnVals...).Once()
-		a.Check(context.Background(), validateReq, validateRes)
-		mockTs.AssertExpectations(t)
-		if validateRes.Success != testData.expectedSuccess {
-			t.Errorf("ValidateAuth: expect get success=%v but got %v for %s",
-				testData.expectedSuccess, validateRes.Success, testData.username)
-			return
-		}
+		assert.Equal(t, testData.expectedSuccess, checkRes.Success)
 		if testData.expectedSuccess {
-			mockTs.On("getToken", res.Uid).Return("", errors.New("not found")).Once()
-			validateReq.Token += "abc"
-			a.Check(context.Background(), validateReq, validateRes)
-			mockTs.AssertExpectations(t)
-			if validateRes.Success {
-				t.Errorf("ValidateAuth: got success=true for an invalid(by add a postfix) token for %s",
-					testData.username)
-				return
-			}
-		}
+			checkReq.Token += "abc"
+			err = service.Check(context.Background(), checkReq, checkRes)
+			assert.Nil(t, err)
+			assert.False(t, checkRes.Success)
 
+			time.Sleep(tokenExpDur)
+			checkReq.Token = loginRes.Token
+			err = service.Check(context.Background(), checkReq, checkRes)
+			assert.Nil(t, err)
+			assert.False(t, checkRes.Success)
+		}
 	}
 	if len(validTokens) >= 2 {
-		if validTokens[0] == validTokens[1] {
-			t.Errorf("DoAuth: got same token for two auth requests")
-			return
-		}
+		assert.NotEqual(t, validTokens[0], validTokens[1])
 	}
 }

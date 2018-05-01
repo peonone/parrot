@@ -36,7 +36,7 @@ func (h *authHandler) doAuth(c *onlineUser) error {
 		}
 		c.pushCh <- res
 		if res.Success {
-			c.uid = req.Uid
+			c.uid = res.Uid
 			break
 		}
 	}

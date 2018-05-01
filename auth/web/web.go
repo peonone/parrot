@@ -21,7 +21,6 @@ type loginResp struct {
 	Success bool   `json:"success"`
 	ErrMsg  string `json:"errMsg"`
 	Token   string `json:"token"`
-	UID     string `json:"uid"`
 }
 
 // Init initializes auth web resources and registers all handlers
@@ -63,7 +62,6 @@ func (s *authHandler) doLogin(req *http.Request) *loginResp {
 		Success: response.Success,
 		ErrMsg:  response.ErrMsg,
 		Token:   response.Token,
-		UID:     response.Uid,
 	}
 }
 

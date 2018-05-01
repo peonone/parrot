@@ -27,15 +27,14 @@ func TestServe(t *testing.T) {
 	oum := newOnlineUsersManager()
 
 	authReq := &authproto.CheckAuthReq{
-		Uid:   "peon1",
 		Token: "token1",
 	}
 	mockClient.On("ReadJSON", mock.Anything).Return(authReq, nil).Once()
 	mockClient.On("WriteJSON", mock.Anything).Return(nil).Once()
-	authRes := &authproto.CheckAuthRes{Success: true}
+	authRes := &authproto.CheckAuthRes{Success: true, Uid: "peon1"}
 	mockAuthService.On("Check", mock.Anything, mock.Anything).Return(authRes, nil).Once()
 	onlineReq := &proto.UserOnlineReq{
-		Uid:     authReq.Uid,
+		Uid:     authRes.Uid,
 		WebNode: web.DefaultId,
 	}
 	onlineRes := &proto.UserOnlineRes{Success: true}
@@ -49,7 +48,7 @@ func TestServe(t *testing.T) {
 	mockClient.AssertExpectations(t)
 	mockStateService.AssertExpectations(t)
 
-	offlineReq := &proto.UserOfflineReq{Uid: authReq.Uid}
+	offlineReq := &proto.UserOfflineReq{Uid: authRes.Uid}
 	offlineRes := &proto.UserOfflineRes{Success: true}
 	mockStateService.On("Offline", mock.Anything, offlineReq).Return(offlineRes, nil).Once()
 
@@ -133,15 +132,14 @@ func TestCheckIdle(t *testing.T) {
 	oum := newOnlineUsersManager()
 
 	authReq := &authproto.CheckAuthReq{
-		Uid:   "peon1",
 		Token: "token1",
 	}
 	mockClient.On("ReadJSON", mock.Anything).Return(authReq, nil).Once()
 	mockClient.On("WriteJSON", mock.Anything).Return(nil).Once()
-	authRes := &authproto.CheckAuthRes{Success: true}
+	authRes := &authproto.CheckAuthRes{Success: true, Uid: "peon1"}
 	mockAuthService.On("Check", mock.Anything, mock.Anything).Return(authRes, nil).Once()
 	onlineReq := &proto.UserOnlineReq{
-		Uid:     authReq.Uid,
+		Uid:     authRes.Uid,
 		WebNode: web.DefaultId,
 	}
 	onlineRes := &proto.UserOnlineRes{Success: true}
@@ -159,7 +157,7 @@ func TestCheckIdle(t *testing.T) {
 	assert.Equal(t, true, lastSeenDelta < maxIdle+2*time.Second)
 	assert.NotEqual(t, now, ou.lastRequestTime)
 
-	offlineReq := &proto.UserOfflineReq{Uid: authReq.Uid}
+	offlineReq := &proto.UserOfflineReq{Uid: authRes.Uid}
 	offlineRes := &proto.UserOfflineRes{Success: true}
 	mockStateService.On("Offline", mock.Anything, offlineReq).Return(offlineRes, nil).Once()
 	mockClient.On("WriteJSON", idleToLongResp).Return(nil).Once()
