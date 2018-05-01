@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/micro/go-micro/client"
@@ -53,9 +54,10 @@ func (s *authHandler) doLogin(req *http.Request) *loginResp {
 		Password: password[0],
 	})
 	if err != nil {
+		log.Printf("error occurred during login service call: %s", err)
 		return &loginResp{
 			Success: false,
-			ErrMsg:  err.Error(),
+			ErrMsg:  "Internal error",
 		}
 	}
 	return &loginResp{

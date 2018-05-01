@@ -55,9 +55,10 @@ func (h *worldShoutHandler) handle(c *onlineUser, req map[string]interface{}) {
 	rpcRes, err := h.cli.Send(context.Background(), rpcReq)
 	errCnt := 0
 	if err != nil {
+		log.Printf("error occurred during world shout service call: %s", err)
 		c.pushCh <- &genericResp{
 			Success: false,
-			ErrMsg:  err.Error(),
+			ErrMsg:  "Internal error",
 		}
 		errCnt = 1
 	} else {

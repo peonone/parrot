@@ -69,11 +69,7 @@ func TestWorldShoutHandler(t *testing.T) {
 	handler.handle(ou, req)
 	mockService.AssertExpectations(t)
 	assert.Equal(t, len(ou.pushCh), 1)
-	expectedRes := &genericResp{
-		Success: false,
-		ErrMsg:  err.Error(),
-	}
-	assert.Equal(t, expectedRes, <-ou.pushCh)
+	assert.Equal(t, false, (<-ou.pushCh).(*genericResp).Success)
 }
 
 func TestWorldShoutPushHandler(t *testing.T) {

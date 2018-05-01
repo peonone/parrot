@@ -65,9 +65,10 @@ func (h *privateMessageHandler) handle(c *onlineUser, req map[string]interface{}
 	rpcRes, err := h.cli.Send(context.Background(), rpcReq)
 	errCnt := 0
 	if err != nil {
+		log.Printf("error occurred during private message send service call: %s", err)
 		c.pushCh <- &genericResp{
 			Success: false,
-			ErrMsg:  err.Error(),
+			ErrMsg:  "Internal error",
 		}
 		errCnt = 1
 	} else {
