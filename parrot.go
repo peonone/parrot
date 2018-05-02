@@ -13,10 +13,11 @@ func MakeRedisClient() *redis.Client {
 }
 
 //MakeAMQPClient creates a AMQP channel
-func MakeAMQPClient() (*amqp.Channel, error) {
+func MakeAMQPClient() (*amqp.Connection, *amqp.Channel, error) {
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return conn.Channel()
+	channel, err := conn.Channel()
+	return conn, channel, err
 }

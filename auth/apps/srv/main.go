@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/micro/go-micro"
-	"github.com/peonone/parrot/auth/srv"
+	"github.com/micro/go-micro/server"
 )
 
 func main() {
@@ -14,8 +14,7 @@ func main() {
 		micro.RegisterTTL(time.Second*10),
 		micro.RegisterInterval(time.Second*5),
 	)
-	service.Init()
-	srv.Init(service)
+	service.Server().Init(server.Wait(true))
 
 	if err := service.Run(); err != nil {
 		log.Fatal(err)

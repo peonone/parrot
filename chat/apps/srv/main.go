@@ -17,9 +17,10 @@ func main() {
 		micro.RegisterInterval(time.Second*5),
 	)
 	service.Init()
-	srv.Init(service)
+	termFun := srv.Init(service)
 
 	if err := service.Run(); err != nil {
 		log.Fatal(err)
 	}
+	termFun()
 }

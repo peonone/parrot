@@ -107,11 +107,11 @@ func Init(service web.Service) func() {
 		newPrivateMessageHandler(rpcClient, bch),
 		newWorldShoutHandler(rpcClient, bch),
 	}
-	amqpClient, err := parrot.MakeAMQPClient()
+	amqpConn, amqpChan, err := parrot.MakeAMQPClient()
 	if err != nil {
 		panic(err)
 	}
-	err = listenPushMsgs(amqpClient, cmdHandlers)
+	err = listenPushMsgs(amqpChan, cmdHandlers)
 	if err != nil {
 		panic(err)
 	}
@@ -140,7 +140,25 @@ func Init(service web.Service) func() {
 		}
 	})
 	return func() {
-		ouManager.clear()
+		if amqpConn != nil {
+			amqpConn.Close()
+		}
+		if amqpChan != nil {
+			amqpChan.Close()
+		}
+
+		wg := new(sync.WaitGroup)
+		for uid := range ouManager.getAllOnlineUsers() {
+			wg.Add(1)
+			go func(uid string) {
+				req := &proto.UserOfflineReq{
+					Uid: uid,
+				}
+				stateClient.Offline(context.Background(), req)
+				wg.Done()
+			}(uid)
+		}
+		wg.Wait()
 	}
 }
 

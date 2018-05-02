@@ -34,22 +34,31 @@ type baseHandler struct {
 }
 
 // Init initialize chat service resources and register all handlers
-func Init(service micro.Service) {
+func Init(service micro.Service) func() {
 	rdsClient := parrot.MakeRedisClient()
-	amqpClient, err := parrot.MakeAMQPClient()
+	amqpConn, amqpChan, err := parrot.MakeAMQPClient()
 	if err != nil {
 		panic(err)
 	}
 
-	err = amqpClient.ExchangeDeclare(chat.PushMsgExchangeName, "topic", true, false, false, false, nil)
+	err = amqpChan.ExchangeDeclare(chat.PushMsgExchangeName, "topic", true, false, false, false, nil)
 	if err != nil {
 		panic(err)
 	}
 	baseHandler := &baseHandler{
 		stateStore: &redisStateStore{rdsClient},
-		mqSender:   &amqpMqSender{amqpClient},
+		mqSender:   &amqpMqSender{amqpChan},
 	}
 	proto.RegisterPrivateHandler(service.Server(), &privateHandler{baseHandler})
 	proto.RegisterStateHandler(service.Server(), &stateHandler{baseHandler})
 	proto.RegisterShoutHandler(service.Server(), &worldShoutHandler{baseHandler})
+	return func() {
+		rdsClient.Close()
+		if amqpConn != nil {
+			amqpConn.Close()
+		}
+		if amqpChan != nil {
+			amqpChan.Close()
+		}
+	}
 }
